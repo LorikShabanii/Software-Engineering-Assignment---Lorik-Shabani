@@ -1,9 +1,15 @@
 const express = require('express');
-const bodyParser = require('body-parser');
-const mysql = require('mysql2/promise'); // Using promise-based API
+const mysql = require('mysql2/promise');
+const cors = require('cors');
 
 const app = express();
 const port = 5000;
+
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+}));
 
 const pool = mysql.createPool({
   host: 'mysql',
@@ -15,9 +21,9 @@ const pool = mysql.createPool({
   queueLimit: 0,
 });
 
-app.use(bodyParser.json());
+app.use(express.json());
 
-// API endpoint to fetch bookings
+
 app.get('/api/bookings', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM bookings');
@@ -28,8 +34,23 @@ app.get('/api/bookings', async (req, res) => {
   }
 });
 
-// API endpoint to insert a booking
+app.get('/api/bookings/:id', async (req, res) => {
+  const bookingId = req.params.id;
+  try {
+    const [rows] = await pool.query('SELECT * FROM bookings WHERE id = ?', [bookingId]);
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+    res.status(200).json(rows[0]);
+  } catch (error) {
+    console.error('Error fetching booking:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+
 app.post('/api/bookings', async (req, res) => {
+  console.log(req.body);
   const { service, doctor_name, start_time, end_time, date } = req.body;
   const insertQuery = 'INSERT INTO bookings (service, doctor_name, start_time, end_time, date) VALUES (?, ?, ?, ?, ?)';
 
